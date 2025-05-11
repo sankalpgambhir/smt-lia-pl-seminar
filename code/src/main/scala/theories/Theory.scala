@@ -1,0 +1,3 @@
+package theories
+
+trait Theory
