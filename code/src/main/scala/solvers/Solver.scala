@@ -104,7 +104,7 @@ object ClausalDPLL extends Solver[Any]:
     val free = cnf.frees.toList
     dpll(cnf, Nil, free).map(_.asModel).asSatResult
 
-trait TheorySolver[-T](using val th: Theory[T]):
+trait TheorySolver[T](using val th: Theory[T]):
   def checkSat(f: th.Formula): th.SatResult
 
 case class ClausalDPLL[T]()(using tt: Theory[T]) extends TheorySolver[T]:

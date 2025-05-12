@@ -19,7 +19,7 @@ extension [M <: Model] (o: Option[M])
     case Some(m) => Sat(m)
     case None => Unsat
 
-trait Theory[-T]:
+trait Theory[T]:
   type Atom
   type Atomic = theories.Atomic[Atom]
   type Formula = theories.Formula[Atom]
