@@ -9,8 +9,8 @@ sealed trait Formula[+T]:
     case Var(id)         => s"v$id"
     case Atom(a)         => a.toString
     case Not(b)          => s"!(${b.toString})"
-    case And(b1, b2)     => s"(${b1.toString} && ${b2.toString})"
-    case Or(b1, b2)      => s"(${b1.toString} || ${b2.toString})"
+    case And(b1, b2)     => s"(${b1.toString} /\\ ${b2.toString})"
+    case Or(b1, b2)      => s"(${b1.toString} \\/ ${b2.toString})"
     case Implies(b1, b2) => s"(${b1.toString} -> ${b2.toString})"
     case Iff(b1, b2)     => s"(${b1.toString} <-> ${b2.toString})"
 
@@ -54,30 +54,25 @@ case class Clause[T](pos: Set[Atomic[T]], neg: Set[Atomic[T]]):
   def isEmpty: Boolean =
     pos.isEmpty && neg.isEmpty
 
-  /**
-    * Remove the atomic `a` (as a positive literal) from the clause.
+  /** Remove the atomic `a` (as a positive literal) from the clause.
     */
-  infix def `-+` (a: Atomic[T]): Clause[T] =
+  infix def `-+`(a: Atomic[T]): Clause[T] =
     this.copy(pos = pos - a)
 
-  /**
-   * Remove the atomic `a` (as a negative literal `!a`) from the clause.
-   */
-  infix def `--` (a: Atomic[T]): Clause[T] =
+  /** Remove the atomic `a` (as a negative literal `!a`) from the clause.
+    */
+  infix def `--`(a: Atomic[T]): Clause[T] =
     this.copy(neg = neg - a)
-  
-  /**
-   * Add the atomic `a` (as a positive literal) to the clause.
-   */
-  infix def `++` (a: Atomic[T]): Clause[T] =
+
+  /** Add the atomic `a` (as a positive literal) to the clause.
+    */
+  infix def `++`(a: Atomic[T]): Clause[T] =
     this.copy(pos = pos + a)
 
-  /**
-   * Add the atomic `a` (as a negative literal `!a`) to the clause.
-   */
-  infix def `+-` (a: Atomic[T]): Clause[T] =
+  /** Add the atomic `a` (as a negative literal `!a`) to the clause.
+    */
+  infix def `+-`(a: Atomic[T]): Clause[T] =
     this.copy(neg = neg + a)
-  
 
 case class CNF[T](clauses: Seq[Clause[T]]):
   def frees: Set[Atomic[T]] =
