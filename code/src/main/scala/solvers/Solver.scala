@@ -107,7 +107,7 @@ object ClausalDPLL extends Solver[Any]:
 trait TheorySolver[T](using val th: Theory[T]):
   def checkSat(f: th.Formula): th.SatResult
 
-case class ClausalDPLL[T]()(using tt: Theory[T]) extends TheorySolver[T]:
+case class ClausalDPLL[T: Theory]() extends TheorySolver[T]:
   case class State(
     cc: CNF[th.Atom],
     chosen: List[th.Atomic],
