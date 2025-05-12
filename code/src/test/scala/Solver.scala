@@ -1,6 +1,6 @@
 
 import theories.*
-import solvers.*
+import solvers.{*, given}
 
 class SolverTest extends munit.FunSuite {
   val solvers: List[(String, Solver[Prop])] = List(
@@ -10,18 +10,22 @@ class SolverTest extends munit.FunSuite {
     // "CDCL" -> CDCL,
   )
 
+  val theorySolvers: List[(String, TheorySolver[Prop])] = List(
+    "ClausalDPLL(T)" -> ClausalDPLL[Prop]()
+  )
+
   val trueTest = (name: String, solver: Solver[Prop]) => 
     test(s"$name: True is SAT") {
       val f = True
       val result = solver.checkSat(f)
-      assert(result.isDefined)
+      assert(result.isSat)
     }
 
   val falseTest = (name: String, solver: Solver[Prop]) =>
     test(s"$name: False is UNSAT") {
       val f = False
       val result = solver.checkSat(f)
-      assert(result.isEmpty)
+      assert(!result.isSat)
     }
 
   val trivialSATFormulas = List(
@@ -38,7 +42,7 @@ class SolverTest extends munit.FunSuite {
     test(s"$name: Trivial SAT formulas") {
       for (f <- trivialSATFormulas) {
         val result = solver.checkSat(f)
-        assert(result.isDefined)
+        assert(result.isSat)
       }
     }
 
@@ -52,6 +56,5 @@ class SolverTest extends munit.FunSuite {
   for ((name, solver) <- solvers) {
     tests.foreach(test => test(name, solver))
   }
-
 }
 

@@ -164,13 +164,20 @@ extension [T](f: Formula[T])
     case Iff(b1, b2) =>
       b1.evaluateUnder(assignments) == b2.evaluateUnder(assignments)
 
-case class Model[+T](assignments: Set[Any]):
-  def evaluate[S >: T](a: S): Boolean = assignments.contains(a)
+case class PropModel[+T](assignments: Seq[T]) extends Model:
+  private val _assignments: Set[Any] = assignments.toSet
+  def evaluate[S >: T](a: S): Boolean = _assignments(a)
   inline def apply[S >: T](a: S): Boolean = evaluate(a)
+  def atoms: Seq[T] = _assignments.toSeq.asInstanceOf
 
-extension [T](assignments: Set[Atomic[T]])
-  def asModel: Model[T] =
-    Model(
+  def prettyModel: String =
+    assignments
+      .map(a => s"$a = ${_assignments(a)}")
+      .mkString("{", ", ", "}")    
+
+extension [T](assignments: Seq[Atomic[T]])
+  def asModel: PropModel[T] =
+    PropModel(
       assignments.collect:
         case Atom(a) => a
     )
