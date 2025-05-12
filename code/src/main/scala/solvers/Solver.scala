@@ -132,9 +132,8 @@ case class ClausalDPLL[T: Theory]() extends TheorySolver[T]:
       left: List[th.Atomic]
   ): th.SatResult =
     if cc.clauses.isEmpty then 
-      // check is these atoms are satisfiable
-      val model = chosen.asModel
-      th.checkSat(model.atoms)
+      // check if these atoms are satisfiable
+      th.checkSat(chosen.asModel.atoms)
     else if cc.clauses.exists(_.isEmpty) then Unsat
     else if left.isEmpty then Unsat
     else // choose next
