@@ -20,7 +20,7 @@ extension [M <: Model] (o: Option[M])
     case None => Unsat
 
 trait Theory[T]:
-  type Atom
+  type Atom = T
   type Model <: theories.Model
   
   type Atomic = theories.Atomic[Atom]

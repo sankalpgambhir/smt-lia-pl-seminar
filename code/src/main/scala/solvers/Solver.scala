@@ -3,8 +3,8 @@ package solvers
 import theories.*
 import scala.annotation.internal.preview
 
-trait Solver[-T]:
-  def checkSat[S <: T](f: Formula[S]): SatResult[PropModel[S]]
+trait Solver[T]:
+  def checkSat(f: Formula[T]): SatResult[Model]
 
 opaque type Prop = Int
 
@@ -12,13 +12,13 @@ object Prop:
   def apply(i: Int): Prop = i
 
 object SimpleSAT extends Solver[Prop]:
-  def checkSat[S <: Prop](f: Formula[S]): SatResult[PropModel[S]] =
+  def checkSat(f: Formula[Prop]): SatResult[PropModel[Prop]] =
     f.frees.toSet.subsets
       .find(f.evaluateUnder)
       .map(_.toSeq.asModel)
       .asSatResult
 
-object DPLL extends Solver[Any]:
+object DPLL extends Solver[Prop]:
   private def reduce[T](f: Formula[T], a: Atomic[T], polarity: Boolean): Formula[T] =
     f match
       case True                    => True
@@ -57,11 +57,11 @@ object DPLL extends Solver[Any]:
           nextLeft
         )
 
-  def checkSat[T](f: Formula[T]): SatResult[PropModel[T]] = 
+  def checkSat(f: Formula[Prop]): SatResult[PropModel[Prop]] = 
     val free = f.frees.toList
     dpll(f, Nil, free).map(_.asModel).asSatResult
 
-object ClausalDPLL extends Solver[Any]:
+object ClausalDPLL extends Solver[Prop]:
   private def reduce[T](cc: CNF[T], a: Atomic[T], polarity: Boolean): CNF[T] =
     // set a to true
     // = set neg a to false
@@ -99,12 +99,12 @@ object ClausalDPLL extends Solver[Any]:
           nextLeft
         )
 
-  def checkSat[T](f: Formula[T]): SatResult[PropModel[T]] = 
+  def checkSat(f: Formula[Prop]): SatResult[PropModel[Prop]] = 
     val cnf = f.toCNF
     val free = cnf.frees.toList
     dpll(cnf, Nil, free).map(_.asModel).asSatResult
 
-trait TheorySolver[T](using val th: Theory[T]):
+trait TheorySolver[T](using val th: Theory[T]) extends Solver[T]:
   def checkSat(f: th.Formula): th.SatResult
 
 case class ClausalDPLL[T: Theory]() extends TheorySolver[T]:
