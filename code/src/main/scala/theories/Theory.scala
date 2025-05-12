@@ -21,11 +21,24 @@ extension [M <: Model] (o: Option[M])
 
 trait Theory[T]:
   type Atom
+  type Model <: theories.Model
+  
   type Atomic = theories.Atomic[Atom]
   type Formula = theories.Formula[Atom]
-  type Model <: theories.Model
   type SatResult = theories.SatResult[Model]
 
+  /**
+    * Check whether a conjunction of atoms in this theory are consistent. If
+    * yes, produce a theory model.
+    */
   def checkSat(fs: Seq[Atom]): SatResult
 
+  /**
+    * Preprocess a formula as required by the theory
+    */
   def preprocess(f: Formula): Formula
+
+  /**
+    * Is this formula well-formed and within the fragment of this theory?
+    */
+  def wellformed(f: Formula): Boolean

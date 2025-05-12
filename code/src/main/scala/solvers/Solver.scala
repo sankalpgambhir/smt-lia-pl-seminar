@@ -154,15 +154,19 @@ case class ClausalDPLL[T: Theory]() extends TheorySolver[T]:
         )
 
   def checkSat(f: th.Formula): th.SatResult = 
-    val cnf = th.preprocess(f).toCNF
-    val free = cnf.frees.toList
-    dpll(cnf, Nil, free)
+    if !th.wellformed(f) then Unknown
+    else
+      val cnf = th.preprocess(f).toCNF
+      val free = cnf.frees.toList
+      dpll(cnf, Nil, free)
 
 given Theory[Prop] with
   type Atom = Prop
   type Model = PropModel[Prop]
 
-  override def checkSat(fs: Seq[Prop]): SatResult = 
+  def checkSat(fs: Seq[Prop]): SatResult = 
     Sat(PropModel(fs))
 
-  override def preprocess(f: Formula): Formula = f
+  def preprocess(f: Formula): Formula = f
+
+  def wellformed(f: Formula): Boolean = true
