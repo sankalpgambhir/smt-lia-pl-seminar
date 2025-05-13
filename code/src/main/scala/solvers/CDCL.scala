@@ -14,49 +14,68 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
     def contains(lit: Literal): Boolean = lits.contains(lit)
     def isValidated(model: Assignment): Boolean =
       lits.exists(l => model.contains(l))
+    def isFalsified(model: Assignment): Boolean =
+      lits.forall(l => model.contains(!l))
     def unitDecomposition(model: Assignment): Option[(Literal, Implicants)] =
-      val remainingLits = lits.filterNot(l => model.contains(!l))
-      if remainingLits.size == 1 then
+      lazy val remainingLits = lits.filterNot(l => model.contains(!l))
+      if isValidated(model) then
+        // clause is satisfied, no need to decompose
+        None
+      else if remainingLits.size == 1 then
         val lit = remainingLits.head
         // implicants *not* minimized to UIP
-        val implicants = lits.flatMap(l => model.getOrElse(l, Set()))
-        // if there are no implicants, this is a unit clause in the input
-        // it is unit propagated at decision level 0
-        val paddedImplicants = if implicants.isEmpty then Set(0) else implicants
-        Some((lit, paddedImplicants))
-      // empty is possible, but should be handled by initializing the assignment
-      // with "true" unit clauses
-      // else if remainingLits.isEmpty then
+        val implicants = (lits - lit).flatMap(l => model.getOrElse(!l, Set()))
+        Some((lit, implicants))
+      else if remainingLits.isEmpty then
+        // pick the last chosen literal
+        val lastLit = lits.maxBy(l => model(!l).max)
+        val implicants = (lits - lastLit).flatMap(l => model.getOrElse(!l, Set()))
+        Some((lastLit, implicants)) 
       else None
   
+  @annotation.tailrec
   private def unitPropagateRec(
       leftClauses: List[Clause],
       openClauses: List[Clause],
       assignment: Assignment,
-      decisionLevel: Int
-  ): (Assignment, List[Clause]) =
+      decisionLevel: Int,
+      recsize: Int = Int.MaxValue
+  ): Assignment =
     leftClauses match
-      case Nil          => (assignment, openClauses)
+      case Nil          =>
+        if openClauses.isEmpty || openClauses.size == recsize then
+          // no more clauses to propagate
+          // or we reached a fixed point
+          assignment
+        else
+          // continue with the open clauses 
+          unitPropagateRec(
+            openClauses,
+            List.empty,
+            assignment,
+            decisionLevel,
+            openClauses.size
+          )
       case head :: next => 
         // can we unit propagate off of head?
         head.unitDecomposition(assignment) match
           case None => 
-            // leave head around in open clauses, move on
-            unitPropagateRec(next, head :: openClauses, assignment, decisionLevel)
+            // leave head around in open clauses if it isn't already solved,
+            // move on
+            val nextOpen = if head.isValidated(assignment) || head.isFalsified(assignment) then
+              openClauses
+            else
+              head :: openClauses
+            unitPropagateRec(next, nextOpen, assignment, decisionLevel, recsize)
           case Some(kv) =>
-            val locallyUpdatedAssignment = assignment + kv
-            val (newAssignment, leftOpen) = unitPropagateRec(
-              openClauses,
-              List.empty,
-              locallyUpdatedAssignment,
-              decisionLevel
-            )
+            val newAssignment = assignment + kv
             // continue with the rest of the clauses
             unitPropagateRec(
               next,
-              leftOpen,
+              openClauses,
               newAssignment,
-              decisionLevel
+              decisionLevel,
+              recsize
             )
 
   private def unitPropagate(
@@ -69,7 +88,7 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
       List.empty,
       assignment,
       decisionLevel
-    )._1
+    )
 
   private def rollback(
       assignment: Assignment,
@@ -97,8 +116,8 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
       def backjumpOf(atom: Atomic): Int =
         val posImp = assignment.getOrElse(Pos(atom), Set.empty) - currentDecisionLevel
         val negImp = assignment.getOrElse(Neg(atom), Set.empty) - currentDecisionLevel
-        val posLevel = posImp.maxOption.getOrElse(0)
-        val negLevel = negImp.maxOption.getOrElse(0)
+        val posLevel = posImp.maxOption.getOrElse(Int.MinValue)
+        val negLevel = negImp.maxOption.getOrElse(Int.MinValue)
         math.max(posLevel, negLevel)
 
       def conflictClause(atom: Atomic): Clause =
@@ -112,7 +131,6 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
       val backjumpLevel = conflictingAtoms.map(backjumpOf).min
       val conflictClauses = conflictingAtoms.map(conflictClause)
       Some((conflictClauses, backjumpLevel))
-
 
   private def cdcl(
     clauses: Set[Clause],
@@ -189,6 +207,5 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
       return Unsat
 
     cdcl(clauses, frees, assignment, decisions, decisionLevel)
-
 
 end CDCL

@@ -31,6 +31,17 @@ sealed trait Formula[+T]:
     case Implies(b1, b2) => b1.frees ++ b2.frees
     case Iff(b1, b2)     => b1.frees ++ b2.frees
 
+  def map[S >: T](f: Formula[S] => Formula[S]): Formula[S] = this match
+    case Not(b)          => f(Not(b.map(f)))
+    case And(b1, b2)     => f(And(b1.map(f), b2.map(f)))
+    case Or(b1, b2)      => f(Or(b1.map(f), b2.map(f)))
+    case Implies(b1, b2) => f(Implies(b1.map(f), b2.map(f)))
+    case Iff(b1, b2)     => f(Iff(b1.map(f), b2.map(f)))
+    case _ => f(this)
+
+  def substitute[S >: T](m: Map[Formula[S], Formula[S]]): Formula[S] =
+    map(ff => m.getOrElse(ff, ff))
+
 case object True extends Formula[Nothing]
 case object False extends Formula[Nothing]
 case class Var private (id: Int) extends Formula[Nothing] with Atomic[Nothing]
@@ -86,14 +97,14 @@ private def tseitin[T](f: Formula[T]): CNF[T] =
     case v @ Var(_) =>
       // (label <-> v)
       Seq(
-        Clause(Set(label), Set(v)), // (label -> v) = (!label \/ v)
-        Clause(Set(v), Set(label)) // (v -> label) = (!v \/ label)
+        Clause(Set(v), Set(label)), // (label -> v) = (!label \/ v)
+        Clause(Set(label), Set(v)) // (v -> label) = (!v \/ label)
       )
     case a @ Atom(_) =>
       // (label <-> a)
       Seq(
-        Clause(Set(label), Set(a)), // (label -> a) = (!label \/ a)
-        Clause(Set(a), Set(label)) // (a -> label) = (!a \/ label)
+        Clause(Set(a), Set(label)), // (label -> a) = (!label \/ a)
+        Clause(Set(label), Set(a)) // (a -> label) = (!a \/ label)
       )
     case Not(b) =>
       val inner = Var.next
@@ -101,8 +112,8 @@ private def tseitin[T](f: Formula[T]): CNF[T] =
       // (label <-> !inner)
         :+ Clause(
           Set(),
-          Set(inner, inner)
-        ) // (label -> !inner) = (!label \/ !inner)
+          Set(inner, label)
+        ) // (label -> !inner) = (!inner \/ !label)
         :+ Clause(
           Set(inner, label),
           Set()
@@ -143,7 +154,6 @@ private def tseitin[T](f: Formula[T]): CNF[T] =
   val clauses = tseitinRec(f, topLabel) :+ topClause
 
   CNF(clauses)
-
 extension [T](f: Formula[T])
   /** Formula in CNF form equisatisfiable to the original formula.
     */

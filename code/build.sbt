@@ -8,5 +8,8 @@ lazy val root = project
 
     scalaVersion := scala3Version,
 
-    libraryDependencies += "org.scalameta" %% "munit" % "1.0.0" % Test
+    libraryDependencies += "org.scalameta" %% "munit" % "1.0.0" % Test,
+    libraryDependencies += "com.github.vagmcs" %% "optimus" % "3.4.5",
+    libraryDependencies += "com.github.vagmcs" %% "optimus-solver-oj" % "3.4.5",
+    libraryDependencies += "com.github.vagmcs" %% "optimus-solver-lp" % "3.4.5"
   )

@@ -1,7 +1,6 @@
 package solvers
 
 import theories.*
-import scala.annotation.internal.preview
 
 trait Solver[T]:
   def checkSat(f: Formula[T]): SatResult[Model]
@@ -73,6 +72,7 @@ object ClausalDPLL extends Solver[Prop]:
     val newClauses = cc.clauses.filterNot(pred).map(reduct)
 
     CNF(newClauses)
+
 
   private def dpll[T](
       cc: CNF[T],

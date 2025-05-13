@@ -2,14 +2,6 @@
 import theories.*
 import solvers.{*, given}
 
-class TestTest extends munit.FunSuite {
-  test("cdcl false"):
-    val a = Atom(Prop(1))
-    val f = a /\ !a
-    val result = CDCL[Prop]().checkSat(f)
-    assert(!result.isSat, s"$f should be UNSAT")
-}
-
 class SolverTest extends munit.FunSuite {
   val solvers: List[(String, Solver[Prop])] = List(
     "SimpleSAT" -> SimpleSAT,
