@@ -9,6 +9,10 @@ trait SatResult[+T]:
   def isSat: Boolean = this match
     case Sat(_) => true
     case _ => false
+
+  def orElse[S >: T](other: => SatResult[S]): SatResult[S] = this match
+    case Sat(_) => this
+    case _ => other
   
 case class Sat[T <: Model](model: T) extends SatResult[T]
 case object Unsat extends SatResult[Nothing]
@@ -26,12 +30,13 @@ trait Theory[T]:
   type Atomic = theories.Atomic[Atom]
   type Formula = theories.Formula[Atom]
   type SatResult = theories.SatResult[Model]
+  type Literal = theories.Literal[Atom]
 
   /**
     * Check whether a conjunction of atoms in this theory are consistent. If
     * yes, produce a theory model.
     */
-  def checkSat(fs: Seq[Atom]): SatResult
+  def checkSat(fs: Seq[Literal]): SatResult
 
   /**
     * Preprocess a formula as required by the theory

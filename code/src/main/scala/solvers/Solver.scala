@@ -108,11 +108,6 @@ trait TheorySolver[T](using val th: Theory[T]) extends Solver[T]:
   def checkSat(f: th.Formula): th.SatResult
 
 case class ClausalDPLL[T: Theory]() extends TheorySolver[T]:
-  case class State(
-    cc: CNF[th.Atom],
-    chosen: List[th.Atomic],
-    left: List[th.Atomic]
-  )
 
   private def reduce[T](cc: CNF[T], a: Atomic[T], polarity: Boolean): CNF[T] =
     // set a to true
@@ -128,28 +123,27 @@ case class ClausalDPLL[T: Theory]() extends TheorySolver[T]:
 
   private def dpll(
       cc: CNF[th.Atom],
-      chosen: List[th.Atomic],
+      chosen: List[th.Literal],
       left: List[th.Atomic]
   ): th.SatResult =
     if cc.clauses.isEmpty then 
       // check if these atoms are satisfiable
-      th.checkSat(chosen.asModel.atoms)
+      th.checkSat(chosen.withoutVars)
     else if cc.clauses.exists(_.isEmpty) then Unsat
     else if left.isEmpty then Unsat
     else // choose next
-      val nextChosen = left.head :: chosen
       val nextLeft = left.tail
       // pos
       val leftBranch = dpll(
         reduce(cc, left.head, true),
-        nextChosen,
+        Pos(left.head) :: chosen,
         nextLeft
       )
       if leftBranch.isSat then leftBranch
       else // neg
         dpll(
           reduce(cc, left.head, false),
-          chosen,
+          Neg(left.head) :: chosen,
           nextLeft
         )
 
@@ -164,8 +158,8 @@ given Theory[Prop] with
   type Atom = Prop
   type Model = PropModel[Prop]
 
-  def checkSat(fs: Seq[Prop]): SatResult = 
-    Sat(PropModel(fs))
+  def checkSat(fs: Seq[Literal]): SatResult = 
+    Sat(PropModel(fs.collect {case Pos(Atom(a)) => a}))
 
   def preprocess(f: Formula): Formula = f
 

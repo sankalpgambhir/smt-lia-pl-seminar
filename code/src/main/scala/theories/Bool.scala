@@ -181,3 +181,20 @@ extension [T](assignments: Seq[Atomic[T]])
       assignments.collect:
         case Atom(a) => a
     )
+
+sealed trait Literal[T]:
+  def unary_! : Literal[T] = this match
+    case Pos(a) => Neg(a)
+    case Neg(a) => Pos(a)
+  def atom: Atomic[T] = this match
+    case Pos(a) => a
+    case Neg(a) => a
+case class Pos[T](a: Atomic[T]) extends Literal[T]
+case class Neg[T](a: Atomic[T]) extends Literal[T]
+  
+
+extension [T] (ls : Seq[Literal[T]])
+  def withoutVars: Seq[Literal[T]] =
+      ls.collect:
+        case a @ Pos(Atom(_)) => a
+        case a @ Neg(Atom(_)) => a
