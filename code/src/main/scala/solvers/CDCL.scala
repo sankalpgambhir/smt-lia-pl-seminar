@@ -10,16 +10,23 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
 
   case class Clause(lits: Set[Literal]):
     def isEmpty: Boolean = lits.isEmpty
+    def isUnit: Boolean = lits.size == 1
     def contains(lit: Literal): Boolean = lits.contains(lit)
-    def isFalsified(model: Set[Literal]): Boolean =
-      lits.forall(l => model.contains(!l))
+    def isValidated(model: Assignment): Boolean =
+      lits.exists(l => model.contains(l))
     def unitDecomposition(model: Assignment): Option[(Literal, Implicants)] =
       val remainingLits = lits.filterNot(l => model.contains(!l))
       if remainingLits.size == 1 then
         val lit = remainingLits.head
         // implicants *not* minimized to UIP
         val implicants = lits.flatMap(l => model.getOrElse(l, Set()))
-        Some((lit, implicants))
+        // if there are no implicants, this is a unit clause in the input
+        // it is unit propagated at decision level 0
+        val paddedImplicants = if implicants.isEmpty then Set(0) else implicants
+        Some((lit, paddedImplicants))
+      // empty is possible, but should be handled by initializing the assignment
+      // with "true" unit clauses
+      // else if remainingLits.isEmpty then
       else None
   
   private def unitPropagateRec(
@@ -77,7 +84,7 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
   private def analyzeConflict(
       frees: Set[Atomic],
       assignment: Assignment,
-      decisions: Seq[Literal],
+      decisions: Map[Int, Literal],
       currentDecisionLevel: Int
   ): Option[(Set[Clause], Int)] =
     // find conflicting atoms in the assignment
@@ -90,8 +97,8 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
       def backjumpOf(atom: Atomic): Int =
         val posImp = assignment.getOrElse(Pos(atom), Set.empty) - currentDecisionLevel
         val negImp = assignment.getOrElse(Neg(atom), Set.empty) - currentDecisionLevel
-        val posLevel = posImp.max
-        val negLevel = negImp.max
+        val posLevel = posImp.maxOption.getOrElse(0)
+        val negLevel = negImp.maxOption.getOrElse(0)
         math.max(posLevel, negLevel)
 
       def conflictClause(atom: Atomic): Clause =
@@ -111,7 +118,7 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
     clauses: Set[Clause],
     frees: Set[Atomic],
     assignment: Assignment,
-    decisions: Seq[Literal],
+    decisions: Map[Int, Literal],
     decisionLevel: Int
   ): SatResult =
     // unit propagate
@@ -119,12 +126,19 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
     // check for conflicts at the current level
     val conflict = analyzeConflict(frees, propagatedAssignment, decisions, decisionLevel)
     conflict match
-      case Some((conflictClauses, backjumpLevel)) =>
+      case Some((conflictClauses, backjumpLevelRaw)) =>
         // backjump with learned clauses
-        val newAssignment = rollback(propagatedAssignment, backjumpLevel)
-        val newClauses = clauses ++ conflictClauses
-        
-        cdcl(newClauses, frees, newAssignment, decisions, backjumpLevel)
+        if backjumpLevelRaw <= 0 then
+          // clauses are inconsistent at decision level 0
+          // return unsat
+          Unsat
+        else
+          // add learned clauses to the set of clauses
+          // and continue with the new assignment
+          val backjumpLevel = math.max(backjumpLevelRaw, 0)
+          val newAssignment = rollback(propagatedAssignment, backjumpLevel)
+          val newClauses = clauses ++ conflictClauses
+          cdcl(newClauses, frees, newAssignment, decisions, backjumpLevel)
       case None =>
         // unit propagation was consistent
         // check if we are done
@@ -141,7 +155,7 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
               clauses,
               frees,
               propagatedAssignment + (lit -> Set(nextDecisionLevel)),
-              decisions :+ lit,
+              decisions + (nextDecisionLevel -> lit),
               nextDecisionLevel
             )
 
@@ -161,9 +175,18 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
     val cnf = f.toCNF
     val frees = cnf.frees
     val clauses = mapCNF(cnf)
-    val assignment = Map.empty[Literal, Implicants]
-    val decisions = Seq.empty[Literal]
-    val decisionLevel = 0
+    val emptyDecisions = Map.empty[Int, Literal]
+    val decisionLevel = -1
+
+    // decide unit clauses (as negative decision levels)
+    val decisions = clauses.filter(_.isUnit).zipWithIndex.map((clause, i) => (-(i + 1), clause.lits.head)).toMap
+    val assignment = decisions.map((k, v) => (v, Set(k)))
+
+    // check and reject trivial cases
+    if clauses.isEmpty then
+      return th.checkSat(Seq.empty)
+    else if clauses.exists(_.isEmpty) then
+      return Unsat
 
     cdcl(clauses, frees, assignment, decisions, decisionLevel)
 
