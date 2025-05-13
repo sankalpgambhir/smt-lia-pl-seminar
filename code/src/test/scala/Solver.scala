@@ -2,18 +2,26 @@
 import theories.*
 import solvers.{*, given}
 
+class TestTest extends munit.FunSuite {
+  test("cdcl false"):
+    val a = Atom(Prop(1))
+    val f = a /\ !a
+    val result = CDCL[Prop]().checkSat(f)
+    assert(!result.isSat, s"$f should be UNSAT")
+}
+
 class SolverTest extends munit.FunSuite {
   val solvers: List[(String, Solver[Prop])] = List(
     "SimpleSAT" -> SimpleSAT,
     "DPLL" -> DPLL,
     "ClausalDPLL" -> ClausalDPLL,
     "ClausalDPLL(T)" -> ClausalDPLL[Prop](),
-    // "CDCL" -> CDCL,
+    "CDCL" -> CDCL[Prop](),
   )
 
-  val a = Var.next
-  val b = Var.next
-  val c = Var.next
+  val a = Atom(Prop(1))
+  val b = Atom(Prop(2))
+  val c = Atom(Prop(3))
 
   val trueTest = (name: String, solver: Solver[Prop]) => 
     test(s"$name: True is SAT") {
@@ -48,7 +56,7 @@ class SolverTest extends munit.FunSuite {
     test(s"$name: Trivial SAT formulas") {
       for (f <- trivialSATFormulas) {
         val result = solver.checkSat(f)
-        assert(result.isSat, s"$name: $f should be SAT")
+        assert(result.isSat, s"$name: $f should be SAT, got $result")
       }
     }
 
@@ -56,7 +64,7 @@ class SolverTest extends munit.FunSuite {
     test(s"$name: Trivial UNSAT formulas") {
       for (f <- trivialUNSATFormulas) {
         val result = solver.checkSat(f)
-        assert(!result.isSat, s"$name: $f should be UNSAT")
+        assert(!result.isSat, s"$name: $f should be UNSAT, got $result")
       }
     }
 
