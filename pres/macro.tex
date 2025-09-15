@@ -1,0 +1,123 @@
+% macro.tex
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{multicol}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{forest}
+\newcolumntype{x}[1]{>{\centering\arraybackslash\hspace{0pt}}p{#1}}
+% \setlength{\columnseprule}{1pt}
+% \def\columnseprulecolor{\color{block body.fg}}
+\usepackage{tikz, pgfplots}
+\usetikzlibrary{shapes.geometric, shapes, fit, arrows, calc, fit, positioning, chains, arrows.meta, backgrounds, calc}
+
+% subject specific
+\usepackage{amsmath, amssymb}
+\usepackage{bussproofs}
+
+% drawing
+\usepackage{pstricks}
+\usepackage{tikz, tkz-orm, pgfplots}
+\usetikzlibrary{arrows,shapes,backgrounds,decorations.markings}
+\usetikzlibrary{matrix,positioning,decorations.pathreplacing,calc,tikzmark}
+\pgfplotsset{width=7.5cm,compat=1.16}
+\usepgfplotslibrary{fillbetween}
+
+% listings
+\usepackage[final]{listings}
+% \usepackage{unicode-math}
+% \usepackage{xunicode}
+% \usepackage{fontspec}
+% \setmonofont[
+%   Contextuals={Alternate}
+% ]{Fira Code}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{1,1,1}
+
+\lstdefinestyle{stolenstyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    inputencoding=utf8,
+    extendedchars=true,
+    language=scala,
+    % texcl=false,
+    mathescape=false,
+    % escapechar=\&,
+    literate = 
+        {=>}{{=>}} {2}
+        {->}{{->}} {2}
+        {_}{{\_}} {1}
+        {|}{\textbar} {1}
+        {==>}{{==>}} {3},
+}
+
+\lstset{style=stolenstyle}
+
+\lstdefinestyle{lisa}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\linespread{1.4}\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=false,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    keywordstyle = [2]{\color{OliveGreen}},
+    keywordstyle = [3]{\color{Blue}},
+    keywordstyle = [4]{\color{BrickRed}},
+    morekeywords = [2]{val, Theorem, have, thenHave, andThen, by},
+    morekeywords = [3]{AccOutNil},
+    morekeywords = [4]{Apply},
+    literate = 
+        {===}{{===}} 3
+        {::}{{::}}   2
+        {->}{{->}}   2,
+}
+
+% \lstset{style=lisa}
+
+% links and citations
+\usepackage{hyperref, bookmark}
+\hypersetup{hidelinks} % hide boxes around links ew
+% pls add color
+\usepackage{csquotes}
+% \usepackage{polyglossia}
+% \setdefaultlanguage{english}
+\usepackage[
+    style=numeric,
+    sorting=none,
+    maxnames=99,
+    language=english
+]{biblatex}
+\addbibresource{biblio.bib}
+
+\usepackage{mathpartir}
+\usepackage{stmaryrd}
+
+\newcommand{\mathcomment}[1]{\text{\textcolor{black!50}{\emph{#1}}}}
