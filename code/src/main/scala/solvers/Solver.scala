@@ -199,7 +199,11 @@ given Theory[Prop] with
   type Model = PropModel[Prop]
 
   def checkSat(fs: Seq[Literal]): SatResult = 
-    Sat(PropModel(fs.collect {case Pos(Atom(a)) => a}))
+    val pos = fs.collect {case Pos(Atom(a)) => a}
+    val neg = fs.collect {case Neg(Atom(a)) => a}
+    if pos.intersect(neg).nonEmpty then Unsat
+    else
+      Sat(PropModel(pos))
 
   def preprocess(f: Formula): Formula = f
 
