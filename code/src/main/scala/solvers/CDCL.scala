@@ -180,7 +180,7 @@ class CDCL[T: Theory]() extends TheorySolver[T]:
           // return unsat
           // how do we construct a proof here?
           // since we must have a conflict cause implicants |- false with no implicants
-          // we must have an empty clause? or a conflicting pair?
+          // we must have an empty clause, or a conflicting pair
           val allClauses = clauses ++ conflictClauses
           lazy val emptyClause = allClauses.filter(_.isEmpty).headOption.map(_.source)
           lazy val conflictingPair = allClauses
