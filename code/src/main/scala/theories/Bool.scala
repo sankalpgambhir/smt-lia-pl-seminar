@@ -85,6 +85,8 @@ case class Clause[T](pos: Set[Atomic[T]], neg: Set[Atomic[T]]):
   infix def `+-`(a: Atomic[T]): Clause[T] =
     this.copy(neg = neg + a)
 
+  def size: Int = pos.size + neg.size
+
 case class CNF[T](clauses: Seq[Clause[T]]):
   def frees: Set[Atomic[T]] =
     clauses.toSet.flatMap(c => c.pos ++ c.neg)

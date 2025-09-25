@@ -9,14 +9,24 @@ opaque type Prop = Int
 
 object Prop:
   def apply(i: Int): Prop = i
-
+  
+/**
+  * Simple stupid SAT solver by checking all possible assignments.
+  *
+  * An assignment is a subset of variables that are considered to be true.
+  */
 object SimpleSAT extends Solver[Prop]:
   def checkSat(f: Formula[Prop]): SatResult[PropModel[Prop]] =
     f.frees.toSet.subsets
+      // the entire sat solver:
       .find(f.evaluateUnder)
+      // then convert to the right model type
       .map(_.toSeq.asModel)
       .asSatResult
 
+// There is actually no unit propagation here;
+// so calling it DPLL is a stretch;
+// we don't even have clauses so unit propagation is a bit meaningless
 object DPLL extends Solver[Prop]:
   private def reduce[T](f: Formula[T], a: Atomic[T], polarity: Boolean): Formula[T] =
     f match
@@ -67,37 +77,75 @@ object ClausalDPLL extends Solver[Prop]:
     // = remove all clauses containing a
     // /\ remove neg a from every clause
     // (flip if !polarity)
-    val pred = (c: Clause[T]) => if polarity then c.pos.contains(a) else c.neg.contains(a)
-    val reduct = (c : Clause[T]) => if polarity then c -- a else c -+ a
+    val pred = 
+      if polarity then
+        (c: Clause[T]) => c.pos.contains(a)
+      else
+        (c: Clause[T]) => c.neg.contains(a)
+    val reduct = 
+      if polarity then
+        (c: Clause[T]) => c -- a
+      else
+        (c: Clause[T]) => c -+ a
     val newClauses = cc.clauses.filterNot(pred).map(reduct)
 
     CNF(newClauses)
+  
+  private def unitPropagate[T](
+      cc: CNF[T],
+      chosen: List[Literal[T]],
+      left: List[Atomic[T]]
+  ): (CNF[T], List[Literal[T]], List[Atomic[T]]) =
+    val unitClause = cc.clauses.find(c => c.size == 1)
 
+    unitClause match
+      case None => (cc, chosen, left) // no more unit clauses
+      case Some(c) => 
+          // is this unit literal positive or negative?
+          val (a, polarity) = 
+            if c.pos.nonEmpty then (c.pos.head, true)
+            else (c.neg.head, false)
+
+          // remove it from left
+          val newLeft = left.filterNot(_ == a)
+          
+          // add it to chosen if needed
+          val newChosen = 
+            if polarity then Pos(a) :: chosen
+            else Neg(a) :: chosen
+
+          // reduce the clauses
+          val newClauses = reduce(cc, a, polarity)
+
+          unitPropagate(newClauses, newChosen, newLeft)
 
   private def dpll[T](
       cc: CNF[T],
-      chosen: List[Atomic[T]],
+      chosen: List[Literal[T]],
       left: List[Atomic[T]]
   ): Option[List[Atomic[T]]] =
-    if cc.clauses.isEmpty then Some(chosen)
-    else if cc.clauses.exists(_.isEmpty) then None
-    else if left.isEmpty then None
-    else // choose next
-      val nextChosen = left.head :: chosen
-      val nextLeft = left.tail
-      // pos
-      val leftBranch = dpll(
-        reduce(cc, left.head, true),
-        nextChosen,
-        nextLeft
-      )
-      if leftBranch.isDefined then leftBranch
-      else // neg
-        dpll(
-          reduce(cc, left.head, false),
-          chosen,
-          nextLeft
-        )
+    unitPropagate(cc, chosen, left) match
+      case (cc, chosen, left) =>
+        if cc.clauses.isEmpty then 
+          // return model; which is the set of true literals
+          Some(chosen.collect({case Pos(a) => a}))
+        else if cc.clauses.exists(_.isEmpty) then None
+        else if left.isEmpty then None
+        else // choose next
+          val nextLeft = left.tail
+
+          lazy val posBranch = dpll(
+            reduce(cc, left.head, true),
+            Pos(left.head) :: chosen,
+            nextLeft
+          )
+          lazy val negBranch = dpll(
+            reduce(cc, left.head, false),
+            chosen,
+            nextLeft
+          )
+
+          posBranch.orElse(negBranch)
 
   def checkSat(f: Formula[Prop]): SatResult[PropModel[Prop]] = 
     val cnf = f.toCNF
@@ -109,43 +157,35 @@ trait TheorySolver[T](using val th: Theory[T]) extends Solver[T]:
 
 case class ClausalDPLL[T: Theory]() extends TheorySolver[T]:
 
-  private def reduce[T](cc: CNF[T], a: Atomic[T], polarity: Boolean): CNF[T] =
-    // set a to true
-    // = set neg a to false
-    // = remove all clauses containing a
-    // /\ remove neg a from every clause
-    // (flip if !polarity)
-    val pred = (c: Clause[T]) => if polarity then c.pos.contains(a) else c.neg.contains(a)
-    val reduct = (c : Clause[T]) => if polarity then c -- a else c -+ a
-    val newClauses = cc.clauses.filterNot(pred).map(reduct)
-
-    CNF(newClauses)
+  import ClausalDPLL.{reduce, unitPropagate}
 
   private def dpll(
       cc: CNF[th.Atom],
       chosen: List[th.Literal],
       left: List[th.Atomic]
   ): th.SatResult =
-    if cc.clauses.isEmpty then 
-      // check if these atoms are satisfiable
-      th.checkSat(chosen.withoutVars)
-    else if cc.clauses.exists(_.isEmpty) then Unsat
-    else if left.isEmpty then Unsat
-    else // choose next
-      val nextLeft = left.tail
-      // pos
-      val leftBranch = dpll(
-        reduce(cc, left.head, true),
-        Pos(left.head) :: chosen,
-        nextLeft
-      )
-      if leftBranch.isSat then leftBranch
-      else // neg
-        dpll(
-          reduce(cc, left.head, false),
-          Neg(left.head) :: chosen,
-          nextLeft
-        )
+    unitPropagate(cc, chosen, left) match
+      case (cc, chosen, left) =>
+        if cc.clauses.isEmpty then 
+          // check if these atoms are satisfiable
+          th.checkSat(chosen.withoutVars)
+        else if cc.clauses.exists(_.isEmpty) then Unsat
+        else if left.isEmpty then Unsat
+        else // choose next
+          val nextLeft = left.tail
+          
+          lazy val posBranch = dpll(
+            reduce(cc, left.head, true),
+            Pos(left.head) :: chosen,
+            nextLeft
+          )
+          lazy val negBranch = dpll(
+            reduce(cc, left.head, false),
+            Neg(left.head) :: chosen,
+            nextLeft
+          )
+
+          posBranch.orElse(negBranch)
 
   def checkSat(f: th.Formula): th.SatResult = 
     if !th.wellformed(f) then Unknown
