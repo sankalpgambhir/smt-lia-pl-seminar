@@ -17,3 +17,6 @@ implementation.
 [`src/main/scala/solvers/CDCL.scala`](src/main/scala/solvers/CDCL.scala)
 defines a CDCL(T) implementation and in principle produces proofs, but this is
 not well tested.
+
+There is a non-working in-progress LRA theory implementation, which is the only
+use of the dependencies as well.
